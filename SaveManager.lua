@@ -131,30 +131,45 @@ local SaveManager = {} do
 	end
 
 	function SaveManager:BuildFolderTree()
-		local userFolder = self:GetUserFolder()
-		local paths = { userFolder, userFolder .. "/settings" }
-
-		for _, path in ipairs(paths) do
-			if not isfolder(path) then makefolder(path) end
+		-- แบ่งชั้นโฟลเดอร์ตาม / หรือ \
+		local userPath = self:GetUserFolder()
+		local segments = {}
+		for seg in userPath:gmatch("[^/\\]+") do
+			table.insert(segments, seg)
+		end
+	
+		-- สร้างทีละชั้น
+		local acc = ""
+		for _, seg in ipairs(segments) do
+			acc = #acc > 0 and (acc .. "/" .. seg) or seg
+			if not isfolder(acc) then
+				makefolder(acc)
+			end
+		end
+	
+		-- แล้วค่อยสร้างโฟลเดอร์ settings
+		local settingsPath = userPath .. "/settings"
+		if not isfolder(settingsPath) then
+			makefolder(settingsPath)
 		end
 	end
 
 	function SaveManager:RefreshConfigList()
 		local settingsPath = self:GetUserFolder() .. "/settings"
 	
-		-- ถ้ายังไม่มี ให้สร้างใหม่
+		-- ถ้าโฟลเดอร์ยังไม่มี ให้สั่งสร้าง
 		if not isfolder(settingsPath) then
 			self:BuildFolderTree()
 		end
 	
-		-- เรียก listfiles อย่างปลอดภัย
-		local success, files = pcall(listfiles, settingsPath)
-		if not success or type(files) ~= "table" then
+		-- อ่านไฟล์แบบปลอดภัย
+		local ok, list = pcall(listfiles, settingsPath)
+		if not ok or type(list) ~= "table" then
 			return {}
 		end
 	
 		local out = {}
-		for _, file in ipairs(files) do
+		for _, file in ipairs(list) do
 			if file:sub(-5) == ".json" then
 				local name = file:match("([^/\\]+)%.json$")
 				if name and name ~= "options" then
@@ -164,8 +179,6 @@ local SaveManager = {} do
 		end
 		return out
 	end
-	
-	
 
 	function SaveManager:SetLibrary(library)
 		self.Library = library
