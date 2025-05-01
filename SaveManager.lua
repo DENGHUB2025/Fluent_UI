@@ -140,25 +140,37 @@ local SaveManager = {} do
 	end
 
 	function SaveManager:RefreshConfigList()
-		local list = listfiles(self:GetUserFolder() .. "/settings")
-		local out = {}
+		local settingsPath = self:GetUserFolder() .. "/settings"
 	
-		for _, file in ipairs(list) do
+		-- ถ้ายังไม่มี ให้สร้างใหม่
+		if not isfolder(settingsPath) then
+			self:BuildFolderTree()
+		end
+	
+		-- เรียก listfiles อย่างปลอดภัย
+		local success, files = pcall(listfiles, settingsPath)
+		if not success or type(files) ~= "table" then
+			return {}
+		end
+	
+		local out = {}
+		for _, file in ipairs(files) do
 			if file:sub(-5) == ".json" then
-				local name = file:match("([^/\\]+)%.json$") -- รองรับทั้ง `/` และ `\`
+				local name = file:match("([^/\\]+)%.json$")
 				if name and name ~= "options" then
 					table.insert(out, name)
 				end
 			end
 		end
-	
 		return out
 	end
+	
 	
 
 	function SaveManager:SetLibrary(library)
 		self.Library = library
-        self.Options = library.Options
+		self.Options = library.Options
+		self:BuildFolderTree()   -- <-- สร้างโฟลเดอร์สำหรับผู้เล่นจริงที่เพิ่งมี LocalPlayer
 	end
 
 	function SaveManager:LoadAutoloadConfig()
